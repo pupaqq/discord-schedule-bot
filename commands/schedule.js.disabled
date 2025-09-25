@@ -1,0 +1,202 @@
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const moment = require('moment-timezone');
+
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName('schedule')
+        .setDescription('カレンダー形式で日程調整投票を作成します')
+        .addStringOption(option =>
+            option.setName('title')
+                .setDescription('投票のタイトル')
+                .setRequired(true))
+        .addStringOption(option =>
+            option.setName('description')
+                .setDescription('投票の説明（任意）')
+                .setRequired(false)),
+
+    async execute(interaction) {
+        try {
+            await interaction.deferReply();
+
+            const title = interaction.options.getString('title');
+            const description = interaction.options.getString('description') || '';
+
+            // カレンダー表示用のEmbedを作成
+            const calendarEmbed = new EmbedBuilder()
+                .setTitle(`📅 ${title}`)
+                .setDescription(description || 'カレンダーから日付を選択してください')
+                .setColor(0x00AE86)
+                .setTimestamp();
+
+            // 現在の月のカレンダーを生成
+            const currentMonth = moment().tz('Asia/Tokyo');
+            const calendar = generateCalendar(currentMonth);
+            
+            calendarEmbed.addFields({
+                name: `📆 ${currentMonth.format('YYYY年MM月')}`,
+                value: calendar,
+                inline: false
+            });
+
+            // 日付選択用のセレクトメニューを作成
+            const dateSelectMenu = createDateSelectMenu(currentMonth);
+            
+            // 時間選択用のボタンを作成
+            const timeButtons = createTimeButtons();
+            
+            // 詳細設定ボタン
+            const settingsButton = new ButtonBuilder()
+                .setCustomId('schedule_detailed_settings')
+                .setLabel('詳細設定')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('⚙️');
+
+            const row1 = new ActionRowBuilder().addComponents(dateSelectMenu);
+            const row2 = new ActionRowBuilder().addComponents(timeButtons);
+            const row3 = new ActionRowBuilder().addComponents(settingsButton);
+
+            // カレンダーメッセージを送信
+            await interaction.editReply({
+                embeds: [calendarEmbed],
+                components: [row1, row2, row3]
+            });
+
+            await interaction.followUp({
+                content: `✅ カレンダー形式の日程調整「${title}」を作成しました！\n📅 日付と時間を選択してから投票を作成してください。`,
+                ephemeral: true
+            });
+
+        } catch (error) {
+            console.error('scheduleコマンドエラー:', error);
+            
+            try {
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.editReply({
+                        content: '❌ カレンダー作成中にエラーが発生しました。'
+                    });
+                } else {
+                    await interaction.reply({
+                        content: '❌ カレンダー作成中にエラーが発生しました。',
+                        ephemeral: true
+                    });
+                }
+            } catch (replyError) {
+                console.error('エラーレスポンス送信失敗:', replyError);
+            }
+        }
+    },
+};
+
+// カレンダー生成関数
+function generateCalendar(month) {
+    const startOfMonth = month.clone().startOf('month');
+    const endOfMonth = month.clone().endOf('month');
+    const startOfCalendar = startOfMonth.clone().startOf('week');
+    const endOfCalendar = endOfMonth.clone().endOf('week');
+
+    let calendar = '```\n';
+    calendar += '日 月 火 水 木 金 土\n';
+    
+    const current = startOfCalendar.clone();
+    while (current.isSameOrBefore(endOfCalendar)) {
+        if (current.isSame(month, 'month')) {
+            const day = current.format('DD');
+            const isToday = current.isSame(moment(), 'day');
+            const isPast = current.isBefore(moment(), 'day');
+            
+            if (isToday) {
+                calendar += `[${day}]`;
+            } else if (isPast) {
+                calendar += `~~${day}~~`;
+            } else {
+                calendar += ` ${day} `;
+            }
+        } else {
+            calendar += '   ';
+        }
+        
+        if (current.day() === 6) { // 土曜日
+            calendar += '\n';
+        }
+        
+        current.add(1, 'day');
+    }
+    
+    calendar += '```';
+    return calendar;
+}
+
+// 日付選択メニュー作成
+function createDateSelectMenu(month) {
+    const options = [];
+    const startOfMonth = month.clone().startOf('month');
+    const endOfMonth = month.clone().endOf('month');
+    const today = moment().tz('Asia/Tokyo');
+    
+    let current = startOfMonth.clone();
+    while (current.isSameOrBefore(endOfMonth)) {
+        // 過去の日付は除外
+        if (current.isSameOrAfter(today, 'day')) {
+            const dateStr = current.format('YYYY-MM-DD');
+            const displayStr = current.format('MM/DD (ddd)');
+            const isToday = current.isSame(today, 'day');
+            
+            options.push({
+                label: isToday ? `📅 ${displayStr} (今日)` : displayStr,
+                value: dateStr,
+                description: current.format('YYYY年MM月DD日')
+            });
+        }
+        
+        current.add(1, 'day');
+    }
+
+    // オプションが空の場合はデフォルトオプションを追加
+    if (options.length === 0) {
+        options.push({
+            label: '選択可能な日付がありません',
+            value: 'no_dates',
+            description: '今月は選択可能な日付がありません'
+        });
+    }
+
+    return new StringSelectMenuBuilder()
+        .setCustomId('schedule_date_select')
+        .setPlaceholder('日付を選択してください（過去の日付は除外）')
+        .setMinValues(1)
+        .setMaxValues(Math.min(options.length, 10))
+        .addOptions(options);
+}
+
+// 時間選択ボタン作成
+function createTimeButtons() {
+    const row = new ActionRowBuilder();
+    
+    // 時間帯ボタン
+    const morningBtn = new ButtonBuilder()
+        .setCustomId('schedule_time_morning')
+        .setLabel('午前 (9:00-12:00)')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🌅');
+    
+    const afternoonBtn = new ButtonBuilder()
+        .setCustomId('schedule_time_afternoon')
+        .setLabel('午後 (13:00-17:00)')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('☀️');
+    
+    const eveningBtn = new ButtonBuilder()
+        .setCustomId('schedule_time_evening')
+        .setLabel('夜 (18:00-21:00)')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🌙');
+    
+    const customBtn = new ButtonBuilder()
+        .setCustomId('schedule_time_custom')
+        .setLabel('カスタム時間')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('⏰');
+
+    row.addComponents(morningBtn, afternoonBtn, eveningBtn, customBtn);
+    return row;
+}

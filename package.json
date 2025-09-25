@@ -1,0 +1,32 @@
+{
+  "name": "discord-schedule-bot",
+  "version": "1.0.0",
+  "description": "Discord日程調整bot - 3つのモードで柔軟な日程調整をサポート",
+  "main": "index.js",
+  "engines": {
+    "node": "18.x"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "schedule",
+    "polling",
+    "日程調整"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^17.2.2",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
