@@ -18,7 +18,7 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            await interaction.deferReply();
+            await interaction.deferReply({ ephemeral: true });
 
             const title = interaction.options.getString('title');
             const description = interaction.options.getString('description') || '';
