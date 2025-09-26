@@ -18,6 +18,12 @@ module.exports = {
 
     async execute(interaction) {
         try {
+            // 即座に応答してタイムアウトを回避
+            await interaction.reply({
+                content: '📅 日程調整カレンダーを作成中...',
+                ephemeral: true
+            });
+
             const title = interaction.options.getString('title');
             const description = interaction.options.getString('description') || '';
 
@@ -95,8 +101,8 @@ module.exports = {
             const allComponents = [monthRow, ...dateRows, addRow];
             const limitedComponents = allComponents.slice(0, 5);
 
-            // メッセージを送信
-            const sent = await interaction.reply({
+            // メッセージを送信（followUpで追加メッセージ）
+            const sent = await interaction.followUp({
                 embeds: [scheduleEmbed],
                 components: limitedComponents
             });
@@ -122,7 +128,12 @@ module.exports = {
             console.error('specifコマンドエラー:', error);
             
             try {
-                if (!interaction.replied) {
+                if (interaction.replied) {
+                    await interaction.followUp({
+                        content: '❌ 日程調整作成中にエラーが発生しました。',
+                        ephemeral: true
+                    });
+                } else {
                     await interaction.reply({
                         content: '❌ 日程調整作成中にエラーが発生しました。',
                         ephemeral: true
