@@ -1,7 +1,7 @@
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-class Database {
+class DatabaseManager {
     constructor(dbPath) {
         this.dbPath = dbPath;
         this.db = null;
@@ -395,4 +395,4 @@ class Database {
     }
 }
 
-module.exports = Database;
+module.exports = DatabaseManager;

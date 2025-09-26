@@ -57,8 +57,8 @@ if (fs.existsSync(eventsPath)) {
 }
 
 // データベース初期化
-const Database = require('./database/database.js');
-const db = new Database(config.DATABASE_PATH);
+const DatabaseManager = require('./database/database.js');
+const db = new DatabaseManager(config.DATABASE_PATH);
 
 // データベース初期化
 db.init().then(() => {
