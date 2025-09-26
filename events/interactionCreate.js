@@ -235,7 +235,7 @@ async function handleDeleteConfirm(interaction) {
                                     return typeof id === 'string' && (id.startsWith('delete_confirm_') || id.startsWith('delete_cancel_'));
                                 })
                             );
-                            if (hasIdInContent || hasIdInEmbeds || hasScheduleComponents || hasDeleteComponents) {
+                            if (hasIdInContent || hasIdInEmbeds) {
                                 await m.delete().catch(err => console.error('関連メッセージ削除失敗:', err));
                             }
                         }
