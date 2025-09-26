@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, Collection, EmbedBuilder, ActionRowBuilder, B
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment-timezone');
+const express = require('express');
 
 // 設定ファイルの読み込み
 const config = require('./config.js');
@@ -68,6 +69,30 @@ db.init().then(() => {
 
 // クライアントにデータベースを追加
 client.database = db;
+
+// Express サーバーの設定（Renderの無料プラン対策）
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ヘルスチェックエンドポイント
+app.get('/', (req, res) => {
+    res.json({ 
+        status: 'Bot is running', 
+        timestamp: new Date().toISOString(),
+        guilds: client.guilds.cache.size,
+        uptime: process.uptime()
+    });
+});
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'healthy', bot: 'online' });
+});
+
+// サーバー起動
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🌐 Web server running on port ${PORT}`);
+    console.log(`🌐 Server bound to 0.0.0.0:${PORT}`);
+});
 
 // ボットの起動
 client.login(config.DISCORD_TOKEN).catch(err => {
