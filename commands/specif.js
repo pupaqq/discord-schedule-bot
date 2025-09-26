@@ -18,8 +18,6 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            await interaction.deferReply({ ephemeral: true });
-
             const title = interaction.options.getString('title');
             const description = interaction.options.getString('description') || '';
 
@@ -98,7 +96,7 @@ module.exports = {
             const limitedComponents = allComponents.slice(0, 5);
 
             // メッセージを送信
-            const sent = await interaction.editReply({
+            const sent = await interaction.reply({
                 embeds: [scheduleEmbed],
                 components: limitedComponents
             });
@@ -124,14 +122,10 @@ module.exports = {
             console.error('specifコマンドエラー:', error);
             
             try {
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.editReply({
-                        content: '❌ 日程調整作成中にエラーが発生しました。'
-                    });
-                } else {
+                if (!interaction.replied) {
                     await interaction.reply({
                         content: '❌ 日程調整作成中にエラーが発生しました。',
-                        flags: 64
+                        ephemeral: true
                     });
                 }
             } catch (replyError) {
