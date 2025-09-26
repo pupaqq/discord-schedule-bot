@@ -27,8 +27,8 @@ module.exports = {
                 ephemeral: true
             });
 
-            // 重い処理を非同期で実行
-            setTimeout(async () => {
+            // 重い処理を完全に分離して実行
+            setImmediate(async () => {
                 try {
                     await this.createScheduleMessage(interaction, title, description);
                 } catch (error) {
@@ -42,7 +42,7 @@ module.exports = {
                         console.error('エラーレスポンス送信失敗:', replyError);
                     }
                 }
-            }, 100);
+            });
 
         } catch (error) {
             console.error('specifコマンドエラー:', error);
@@ -67,15 +67,14 @@ module.exports = {
 
     async createScheduleMessage(interaction, title, description) {
         try {
-
-            // セッションデータを初期化
+            // セッションデータを最小限に初期化
             if (!interaction.client.scheduleSessions) {
                 interaction.client.scheduleSessions = new Map();
             }
 
             const sessionData = {
-                title: title,
-                description: description,
+                title,
+                description,
                 selectedDates: [],
                 selectedTimes: [],
                 candidates: [],
@@ -83,22 +82,23 @@ module.exports = {
                 messageId: null
             };
 
-            interaction.client.scheduleSessions.set(interaction.message?.id || 'temp', sessionData);
+            // セッションデータを保存（非同期）
+            setImmediate(() => {
+                interaction.client.scheduleSessions.set(interaction.message?.id || 'temp', sessionData);
+            });
 
-            // 調整さん風のEmbedを作成
+            // 最適化されたEmbed作成
+            const currentMonth = moment().tz(config.DEFAULT_TIMEZONE);
             const scheduleEmbed = new EmbedBuilder()
                 .setTitle(`📅 ${title}`)
                 .setDescription(description || '日程調整投票')
                 .setColor(0x00AE86)
+                .addFields({
+                    name: `📆 ${currentMonth.format('YYYY年MM月')} の日程選択`,
+                    value: '日付と時間を選択してください',
+                    inline: false
+                })
                 .setTimestamp();
-
-            // 現在の月を表示
-            const currentMonth = moment().tz(config.DEFAULT_TIMEZONE);
-            scheduleEmbed.addFields({
-                name: `📆 ${currentMonth.format('YYYY年MM月')} の日程選択`,
-                value: '日付と時間を選択してください',
-                inline: false
-            });
 
             // 月選択ボタンを作成
             const monthButtons = createMonthButtons(currentMonth);
