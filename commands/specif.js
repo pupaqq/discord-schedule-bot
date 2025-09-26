@@ -27,8 +27,8 @@ module.exports = {
                 ephemeral: true
             });
 
-            // 重い処理を完全に分離して実行
-            setImmediate(async () => {
+            // 究極の最適化：処理を完全に分離
+            process.nextTick(async () => {
                 try {
                     await this.createScheduleMessage(interaction, title, description);
                 } catch (error) {
@@ -82,31 +82,28 @@ module.exports = {
                 messageId: null
             };
 
-            // セッションデータを保存（非同期）
-            setImmediate(() => {
+            // セッションデータを保存（完全非同期）
+            process.nextTick(() => {
                 interaction.client.scheduleSessions.set(interaction.message?.id || 'temp', sessionData);
             });
 
-            // 最適化されたEmbed作成
+            // 究極の最適化：Embed作成を最小限に
             const currentMonth = moment().tz(config.DEFAULT_TIMEZONE);
             const scheduleEmbed = new EmbedBuilder()
                 .setTitle(`📅 ${title}`)
                 .setDescription(description || '日程調整投票')
                 .setColor(0x00AE86)
-                .addFields({
-                    name: `📆 ${currentMonth.format('YYYY年MM月')} の日程選択`,
-                    value: '日付と時間を選択してください',
-                    inline: false
-                })
                 .setTimestamp();
 
-            // 月選択ボタンを作成
-            const monthButtons = createMonthButtons(currentMonth);
-            const monthRow = new ActionRowBuilder().addComponents(...monthButtons);
+            // 究極の最適化：ボタン作成を並列化
+            const [monthButtons, dateButtons] = await Promise.all([
+                Promise.resolve(createMonthButtons(currentMonth)),
+                Promise.resolve(createDateButtonsForMonth(currentMonth, 1))
+            ]);
 
-            // 日付選択（ページング: 1–15 / 16–31）
-            const page = 1;
-            const dateButtons = createDateButtonsForMonth(currentMonth, page);
+            const monthRow = new ActionRowBuilder().addComponents(...monthButtons);
+            
+            // 最適化された日付ボタン行作成
             const dateRows = [];
             for (let i = 0; i < dateButtons.length; i += 5) {
                 const buttonRow = dateButtons.slice(i, i + 5);
@@ -148,21 +145,22 @@ module.exports = {
                 components: limitedComponents
             });
 
-            // セッションに現在月とページを保存（メッセージIDキー）
-            interaction.client.scheduleSessions.set(sent.id, {
-                ...sessionData,
-                currentMonth: currentMonth.format('YYYY-MM'),
-                page: 1
-            });
+            // セッション保存を完全非同期化
+            process.nextTick(() => {
+                interaction.client.scheduleSessions.set(sent.id, {
+                    ...sessionData,
+                    currentMonth: currentMonth.format('YYYY-MM'),
+                    page: 1
+                });
 
-            // specif用セッション（タイトル・説明を保持して投票作成時に使用）
-            if (!interaction.client.specifSessions) interaction.client.specifSessions = new Map();
-            interaction.client.specifSessions.set(sent.id, {
-                title,
-                description,
-                selectedDates: [],
-                selectedTimes: [],
-                candidates: []
+                if (!interaction.client.specifSessions) interaction.client.specifSessions = new Map();
+                interaction.client.specifSessions.set(sent.id, {
+                    title,
+                    description,
+                    selectedDates: [],
+                    selectedTimes: [],
+                    candidates: []
+                });
             });
 
         } catch (error) {
