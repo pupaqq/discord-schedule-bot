@@ -22,10 +22,7 @@ module.exports = {
             const description = interaction.options.getString('description') || '';
 
             // 即座に応答してタイムアウトを回避
-            await interaction.reply({
-                content: '📅 日程調整カレンダーを作成中...',
-                ephemeral: true
-            });
+            await interaction.deferReply({ ephemeral: true });
 
             // 究極の最適化：処理を完全に分離
             process.nextTick(async () => {
@@ -33,14 +30,13 @@ module.exports = {
                     await this.createScheduleMessage(interaction, title, description);
                 } catch (error) {
                     console.error('スケジュール作成エラー:', error);
-                    try {
-                        await interaction.followUp({
-                            content: '❌ カレンダー作成中にエラーが発生しました。',
-                            ephemeral: true
-                        });
-                    } catch (replyError) {
-                        console.error('エラーレスポンス送信失敗:', replyError);
-                    }
+                try {
+                    await interaction.editReply({
+                        content: '❌ カレンダー作成中にエラーが発生しました。'
+                    });
+                } catch (replyError) {
+                    console.error('エラーレスポンス送信失敗:', replyError);
+                }
                 }
             });
 
@@ -48,7 +44,11 @@ module.exports = {
             console.error('specifコマンドエラー:', error);
             
             try {
-                if (interaction.replied) {
+                if (interaction.deferred) {
+                    await interaction.editReply({
+                        content: '❌ 日程調整作成中にエラーが発生しました。'
+                    });
+                } else if (interaction.replied) {
                     await interaction.followUp({
                         content: '❌ 日程調整作成中にエラーが発生しました。',
                         ephemeral: true
@@ -167,7 +167,11 @@ module.exports = {
             console.error('specifコマンドエラー:', error);
             
             try {
-                if (interaction.replied) {
+                if (interaction.deferred) {
+                    await interaction.editReply({
+                        content: '❌ 日程調整作成中にエラーが発生しました。'
+                    });
+                } else if (interaction.replied) {
                     await interaction.followUp({
                         content: '❌ 日程調整作成中にエラーが発生しました。',
                         ephemeral: true
